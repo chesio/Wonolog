@@ -103,6 +103,7 @@ class Controller {
 		$controller = new PhpErrorController();
 		register_shutdown_function( [ $controller, 'on_fatal', ] );
 		set_error_handler( [ $controller, 'on_error' ], $error_types );
+		register_shutdown_function( [ $controller, 'ensure_error_handling', ] );
 		set_exception_handler( [ $controller, 'on_exception', ] );
 
 		// Ensure that channel Channels::PHP_ERROR error is there

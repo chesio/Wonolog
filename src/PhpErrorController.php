@@ -43,6 +43,18 @@ class PhpErrorController {
 	/**
 	 * @var array
 	 */
+	private static $fatals = [
+		E_ERROR,
+		E_PARSE,
+		E_CORE_ERROR,
+		E_CORE_WARNING,
+		E_COMPILE_ERROR,
+		E_COMPILE_WARNING,
+	];
+
+	/**
+	 * @var array
+	 */
 	private static $super_globals_keys = [
 		'_REQUEST',
 		'_ENV',
@@ -87,6 +99,30 @@ class PhpErrorController {
 	}
 
 	/**
+	 * Ensures errors are logged by Wonolog even when its internal handler has been replaced.
+	 *
+	 * @return void
+	 */
+	public function ensure_error_handling() {
+
+		$error_handler = set_error_handler( '__return_true' );
+		restore_error_handler();
+		if ( [ $this, 'on_error' ] === $error_handler ) {
+			return;
+		}
+
+		$last_error = error_get_last();
+		if ( ! $last_error ) {
+			return;
+		}
+
+		$error = array_merge( [ 'type' => -1, 'message' => '', 'file' => '', 'line' => 0 ], $last_error );
+		if ( ! in_array( $error[ 'type' ], self::$fatals, TRUE ) ) {
+			$this->on_error( $error[ 'type' ], $error[ 'message' ], $error[ 'file' ], $error[ 'line' ] );
+		}
+	}
+
+	/**
 	 * Uncaught exception handler.
 	 *
 	 * @param  \Throwable $e
@@ -128,16 +164,7 @@ class PhpErrorController {
 
 		$error = array_merge( [ 'type' => -1, 'message' => '', 'file' => '', 'line' => 0 ], $last_error );
 
-		$fatals = [
-			E_ERROR,
-			E_PARSE,
-			E_CORE_ERROR,
-			E_CORE_WARNING,
-			E_COMPILE_ERROR,
-			E_COMPILE_WARNING,
-		];
-
-		if ( in_array( $error[ 'type' ], $fatals, TRUE ) ) {
+		if ( in_array( $error[ 'type' ], self::$fatals, TRUE ) ) {
 			$this->on_error( $error[ 'type' ], $error[ 'message' ], $error[ 'file' ], $error[ 'line' ] );
 		}
 	}
